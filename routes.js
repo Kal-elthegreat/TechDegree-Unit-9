@@ -1,9 +1,12 @@
 'use strict';
 
-var express = require('express');
-var router = express.Router();
-var Course = require('./models').Course;
-var User = require('./models').User;
+const express = require('express');
+const router = express.Router();
+const Course = require('./models').Course;
+const User = require('./models').User;
+const bcryptjs = require('bcryptjs');
+const auth = require('basic-auth');
+
 
 
 router.param("id", function(req, res,next,id){
@@ -16,26 +19,76 @@ router.param("id", function(req, res,next,id){
         }
         req.course = doc;
         return next();
-    })
-})
-
-// GET USERS - working
-router.get('/users', (req,res,next) => {
-    User.find({})
-    .exec(function(err,users){
-        if(err) return next(err);
-        res.json(users)
     });
 });
 
-// POST USERS - working
+var users = [];
+
+
+const authenticateUser = (req, res, next) => {
+    let message = null;
+
+    const credentials = auth(req);
+
+    if(credentials){
+        //console.log("CREDENTIALS: " + credentials.name)
+        //console.log('USERS:' + users)
+        const user = users.find(u => u.emailAddress === credentials.name);
+        
+        if(user) {
+            //console.log("user passed")
+            const authenticated = bcryptjs
+            .compareSync(credentials.pass, user.password);
+
+            if (authenticated){
+                console.log(`Authentication successful for username: ${user.emailAddress}`);
+                req.currentUser = user;
+            } else {
+                message  = `Authentication failure for username: ${user.emailAddress}`;
+            }
+        }
+        else {
+            message = `User not found for username: ${credentials.name}`
+        }
+    }
+    else {
+    message = 'Auth header not found';
+    }
+
+    if(message) {
+        console.warn(message);
+
+        res.status(401).json({message: 'Access Denied'});
+    } else {
+        next();
+    }
+}
+
+// GET USERS - working
+router.get('/users', authenticateUser, (req,res,next) => {
+    const user = req.currentUser;
+  
+    res.json({
+      name: `${user.firstName} ${user.lastName}`,
+      username: user.emailAddress,
+    });
+});
+
+// POST USERS - working validation complete
 router.post('/users',(req,res,next) => {
     const user = new User(req.body);
     user.save(function(err, question){
-        if(err) return next(err);
-        res.status(201);
+        if(err) return res.status(400).json({errors: err.message});
         res.json(user);
     });
+    
+    // hash new user password
+    user.password = bcryptjs.hashSync(user.password)
+
+    users.push(user);
+    console.log(users)
+    // set status to 201 created
+    res.status(201);
 });
 
 // GET COURSES - working
@@ -52,33 +105,31 @@ router.get('/courses/:id', (req,res,next) => {
     res.json(req.course)
 });
 
-// POST COURSES - not working (user value causing course to fail)
+// POST COURSES - not working (user value causing course to fail) but validation complete
 router.post('/courses', (req,res,next) => {
     const course = new Course(req.body);
     course.save(function(err, course){
-        if(err) return next(err);
+        if(err) return res.status(400).json({errors: err.message});
         res.json(course);
     });
 });
 
-// PUT COURSES:id
+// PUT COURSES:id - not working but validation complete
 router.put('/courses/:id', (req,res,next) => {
     req.course.update(req.body, function(err,result){
-        if(err) return next(err);
+        if(err) return res.status(400).json({errors: err.message});
         res.json(result);
     });
-    // updates a single course
 });
 
-// DELETE COURSES
+// DELETE COURSES - working
 router.delete('/courses/:id', (req,res,next) => {
     req.course.remove(function(err){
         req.course.save(function(err,course){
             if (err) return next(err);
-            res.json({response: "Course" + req.params.id + "has been removed"})
+            res.json({response: "Course: " + req.params.id + " has been removed"})
         });
     });
-    // deletes a single course...redirects to /courses??
 });
 
 module.exports = router;
