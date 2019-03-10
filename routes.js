@@ -72,7 +72,12 @@ router.put('/courses/:id', (req,res,next) => {
 
 // DELETE COURSES
 router.delete('/courses/:id', (req,res,next) => {
-    res.json({response: "DELETE from courses id" + req.params.id})
+    req.course.remove(function(err){
+        req.course.save(function(err,course){
+            if (err) return next(err);
+            res.json({response: "Course" + req.params.id + "has been removed"})
+        });
+    });
     // deletes a single course...redirects to /courses??
 });
 

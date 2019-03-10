@@ -16,7 +16,7 @@ var Schema = mongoose.Schema;
     
 
     var CourseSchema = new Schema ({
-        user: UserSchema,
+        user: UserSchema, // issue could lie here??
         title: String,
         description: String,
         estimatedTime: String,
