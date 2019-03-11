@@ -77,16 +77,18 @@ router.get('/users', authenticateUser, (req,res,next) => {
 router.post('/users',(req,res,next) => {
     const user = new User(req.body);
     user.save(function(err, question){
-        if(err) return res.status(400).json({error: err.message})
-        res.json(user);
-    });
-        // hash new user password
-        user.password = bcryptjs.hashSync(user.password)
+        if(err) {
+            return res.status(400).json({error: err.message})
+        } else {
+            res.json(user);
+            // hash new user password
+            user.password = bcryptjs.hashSync(user.password)
 
-        users.push(user);
-        // set status to 201 created
-        res.status(201);
-    
+            users.push(user);
+            // set status to 201 created
+            res.status(201);
+        }
+    });
 });
 
 // GET COURSES - working
