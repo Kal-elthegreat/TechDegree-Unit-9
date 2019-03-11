@@ -19,7 +19,8 @@ router.param("id", function(req, res,next,id){
         }
         req.course = doc;
         return next();
-    });
+    })
+    .populate('user')
 });
 
 var users = [];
@@ -31,8 +32,6 @@ const authenticateUser = (req, res, next) => {
     const credentials = auth(req);
 
     if(credentials){
-        //console.log("CREDENTIALS: " + credentials.name)
-        //console.log('USERS:' + users)
         const user = users.find(u => u.emailAddress === credentials.name);
         
         if(user) {
@@ -78,7 +77,7 @@ router.get('/users', authenticateUser, (req,res,next) => {
 router.post('/users',(req,res,next) => {
     const user = new User(req.body);
     user.save(function(err, question){
-        if(err) return res.status(400).json({errors: err.message});
+        if(err) return res.status(404).json({error: err.message})
         res.json(user);
     });
     
@@ -86,7 +85,6 @@ router.post('/users',(req,res,next) => {
     user.password = bcryptjs.hashSync(user.password)
 
     users.push(user);
-    console.log(users)
     // set status to 201 created
     res.status(201);
 });
@@ -94,6 +92,7 @@ router.post('/users',(req,res,next) => {
 // GET COURSES - working
 router.get('/courses', (req,res,next) => {
     Course.find({},{title: true, description: true, user:true})
+    .populate('user')
     .exec(function(err,courses){
         if(err) return next(err);
         res.json(courses)
@@ -109,7 +108,7 @@ router.get('/courses/:id', (req,res,next) => {
 router.post('/courses', (req,res,next) => {
     const course = new Course(req.body);
     course.save(function(err, course){
-        if(err) return res.status(400).json({errors: err.message});
+        if(err) return next(err)
         res.json(course);
     });
 });
@@ -118,7 +117,7 @@ router.post('/courses', (req,res,next) => {
 router.put('/courses/:id', (req,res,next) => {
     req.course.update(req.body, function(err,result){
         if(err) return res.status(400).json({errors: err.message});
-        res.json(result);
+        res.status(204);
     });
 });
 
@@ -127,7 +126,7 @@ router.delete('/courses/:id', (req,res,next) => {
     req.course.remove(function(err){
         req.course.save(function(err,course){
             if (err) return next(err);
-            res.json({response: "Course: " + req.params.id + " has been removed"})
+            res.status(204)
         });
     });
 });
