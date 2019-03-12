@@ -78,16 +78,14 @@ router.get('/users', authenticateUser, (req,res,next) => {
 router.post('/users',(req,res,next) => {
     const user = new User(req.body);
     user.save(function(err, user){
-        if(err) {
-            return res.status(400).json({error: err.message})
-        } else {
-            // hash new user password
-            user.password = bcryptjs.hashSync(user.password)
+        if(err) return res.status(400).json({error: err.message});
+        // hash new user password
+        user.password = bcryptjs.hashSync(user.password)
 
-            users.push(user);
-            // set status to 201 created
-            res.sendStatus(201);
-        }
+        users.push(user);
+         // set status to 201 created
+        res.sendStatus(201);
+        
     });
 });
 
