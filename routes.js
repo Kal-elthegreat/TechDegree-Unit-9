@@ -23,7 +23,7 @@ router.param("id", function(req, res,next,id){
     .populate('user')
 });
 
-var users = [];
+var users = []; // needs correction should hold user db
 
 
 const authenticateUser = (req, res, next) => {
@@ -35,7 +35,6 @@ const authenticateUser = (req, res, next) => {
         const user = users.find(u => u.emailAddress === credentials.name);
         
         if(user) {
-            //console.log("user passed")
             const authenticated = bcryptjs
             .compareSync(credentials.pass, user.password);
 
@@ -68,25 +67,26 @@ router.get('/users', authenticateUser, (req,res,next) => {
     const user = req.currentUser;
   
     res.json({
+      id: user._id,
       name: `${user.firstName} ${user.lastName}`,
       username: user.emailAddress,
+      password: user.password
     });
 });
 
 // POST USERS - working validation complete
 router.post('/users',(req,res,next) => {
     const user = new User(req.body);
-    user.save(function(err, question){
+    user.save(function(err, user){
         if(err) {
             return res.status(400).json({error: err.message})
         } else {
-            res.json(user);
             // hash new user password
             user.password = bcryptjs.hashSync(user.password)
 
             users.push(user);
             // set status to 201 created
-            res.status(201);
+            res.sendStatus(201);
         }
     });
 });
@@ -106,20 +106,23 @@ router.get('/courses/:id', (req,res,next) => {
     res.json(req.course)
 });
 
-// POST COURSES - not working (user value causing course to fail) but validation complete
+// POST COURSES - working and valid
 router.post('/courses', (req,res,next) => {
     const course = new Course(req.body);
     course.save(function(err, course){
-        if(err) return next(err)
-        res.json(course);
+        if(err) return next(err);
+        else {
+            res.sendStatus(201)
+        }
+        ;
     });
 });
 
-// PUT COURSES:id - not working but validation complete
+// PUT COURSES:id - working and valid 
 router.put('/courses/:id', (req,res,next) => {
     req.course.update(req.body, function(err,result){
         if(err) return res.status(400).json({errors: err.message});
-        res.status(204);
+        res.sendStatus(204);
     });
 });
 
@@ -128,7 +131,7 @@ router.delete('/courses/:id', (req,res,next) => {
     req.course.remove(function(err){
         req.course.save(function(err,course){
             if (err) return next(err);
-            res.status(204)
+            res.sendStatus(204)
         });
     });
 });
