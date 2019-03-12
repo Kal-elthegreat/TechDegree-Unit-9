@@ -23,45 +23,38 @@ router.param("id", function(req, res,next,id){
     .populate('user')
 });
 
+
 const authenticateUser = (req, res, next) => {
-    let message = null;
+    // to do
 
     const credentials = auth(req);
 
     if(credentials){
-        User.findOne({emailAddress : credentials.name}, function (err,user){
-            if(user){
-                const auth = bcryptjs.compareSync(credentials.pass, user.password);
-                if(auth){ 
-                    console.log(`Authentication successful for username: ${user.emailAddress}`);
-                    req.currentUser = user;
-                } else {
-                    message = `Authentication failure for username: ${user.emailAddress}`;
-                }
-            } else {
-                message = `Authentication failure for username: ${credentials.name}`
+        console.log(1)
+        const user = User.findOne({emailAddress: credentials.name})
+    if(user){
+        console.log(2, 'user: ' + user, 'credentials: ' + credentials.pass)
+        const auth = bcryptjs
+        .compareSync(credentials.pass, user.password);
+    if (auth){
+        console.log(3)
+            req.currentUser = user;
             }
-        });
-    } else {
-    message = 'Auth header not found';
-    };
-  // this portion is not working correctly message is returning false everytime
-    if(message) {
-        console.warn(message);
-        res.status(401).json({message: 'Access Denied'});
-    } else {
-        next();
+        }    
     }
+    next();
+
 };
+    
 
 // GET USERS - working
-router.get('/users', authenticateUser, (req,res,next) => {
-    const user = req.currentUser
+router.get('/users', authenticateUser, (req,res) => {
+    const user = req.currentUser;
+    //console.log('test val: ' + user)
     res.json({ // -- keep failing here, user is returning undefined 
-    //   name: `${user.firstName} ${user.lastName}`,
+    name: `${user.firstName} ${user.lastName}`,
     //   username: user.emailAddress,
     //   password: user.password
-
     });
 });
 
@@ -75,7 +68,7 @@ router.post('/users',(req,res,next) => {
     user.save(function(err, user){
         if(err) return res.status(400).json({error: err.message});
 
-        users.push(user);
+        users.push(user); // -- possible problem
          // set status to 201 created
         res.sendStatus(201);
         
@@ -98,7 +91,7 @@ router.get('/courses/:id', (req,res,next) => {
 });
 
 // POST COURSES - working and valid
-router.post('/courses', authenticateUser, (req,res,next) => {
+router.post('/courses', authenticateUser, (req,res) => {
 
     const newCourse = new Course({
         title: req.title,
@@ -119,7 +112,7 @@ router.post('/courses', authenticateUser, (req,res,next) => {
 });
 
 // PUT COURSES:id - working and valid 
-router.put('/courses/:id', authenticateUser, (req,res,next) => {
+router.put('/courses/:id', authenticateUser, (req,res) => {
     req.course.update(req.body, function(err,result){
         if(err) return res.status(400).json({errors: err.message});
         res.sendStatus(204);
@@ -127,7 +120,7 @@ router.put('/courses/:id', authenticateUser, (req,res,next) => {
 });
 
 // DELETE COURSES - working
-router.delete('/courses/:id', authenticateUser, (req,res,next) => {
+router.delete('/courses/:id', authenticateUser, (req,res) => {
     req.course.remove(function(err){
         req.course.save(function(err,course){
             if (err) return next(err);
@@ -137,3 +130,32 @@ router.delete('/courses/:id', authenticateUser, (req,res,next) => {
 });
 
 module.exports = router;
+
+// if(credentials){
+//     user = User.findOne({emailAddress : credentials.name}, function (err,user){
+//         console.log('chose user: ' + user + 'cred' + credentials)
+//         if(user){
+//             //console.log('chose user: ' + user + 'cred' + credentials)
+//             const auth = bcryptjs.compareSync(user.password, credentials.pass);
+//             if(auth){ 
+//                 console.log(`Authentication successful for username: ${user.emailAddress}`);
+//                 req.currentUser = user;
+//                 console.log('currentUser val: ' + req.currentUser)
+//             } else {
+//                 message = `Authentication failure for username: ${user.emailAddress}`;
+//             }
+//         } else {
+//             message = `Authentication failure for username: ${credentials.name}`
+//         }
+//     });
+// } else {
+// message = 'Auth header not found';
+// };
+// // this portion is not working correctly message is returning null everytime
+// if(message) {
+//     console.warn(message);
+//     res.status(401).json({message: 'Access Denied'});
+// } else {
+//     next();
+// }
+// };
