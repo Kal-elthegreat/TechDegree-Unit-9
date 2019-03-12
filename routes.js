@@ -23,64 +23,57 @@ router.param("id", function(req, res,next,id){
     .populate('user')
 });
 
-var users = []; // needs correction should hold user db
-
-
 const authenticateUser = (req, res, next) => {
     let message = null;
 
     const credentials = auth(req);
 
     if(credentials){
-        const user = users.find(u => u.emailAddress === credentials.name);
-        
-        if(user) {
-            const authenticated = bcryptjs
-            .compareSync(credentials.pass, user.password);
-
-            if (authenticated){
-                console.log(`Authentication successful for username: ${user.emailAddress}`);
-                req.currentUser = user;
+        User.findOne({emailAddress : credentials.name}, function (err,user){
+            if(user){
+                const auth = bcryptjs.compareSync(credentials.pass, user.password);
+                if(auth){ 
+                    console.log(`Authentication successful for username: ${user.emailAddress}`);
+                    req.currentUser = user;
+                } else {
+                    message = `Authentication failure for username: ${user.emailAddress}`;
+                }
             } else {
-                message  = `Authentication failure for username: ${user.emailAddress}`;
+                message = `Authentication failure for username: ${credentials.name}`
             }
-        }
-        else {
-            message = `User not found for username: ${credentials.name}`
-        }
-    }
-    else {
+        });
+    } else {
     message = 'Auth header not found';
-    }
-
+    };
+  // this portion is not working correctly message is returning false everytime
     if(message) {
         console.warn(message);
-
         res.status(401).json({message: 'Access Denied'});
     } else {
         next();
     }
-}
+};
 
 // GET USERS - working
 router.get('/users', authenticateUser, (req,res,next) => {
-    const user = req.currentUser;
-  
-    res.json({
-      id: user._id,
-      name: `${user.firstName} ${user.lastName}`,
-      username: user.emailAddress,
-      password: user.password
+    const user = req.currentUser
+    res.json({ // -- keep failing here, user is returning undefined 
+    //   name: `${user.firstName} ${user.lastName}`,
+    //   username: user.emailAddress,
+    //   password: user.password
+
     });
 });
 
 // POST USERS - working validation complete
 router.post('/users',(req,res,next) => {
     const user = new User(req.body);
+
+    // hash new user password
+   user.password = bcryptjs.hashSync(user.password);
+
     user.save(function(err, user){
         if(err) return res.status(400).json({error: err.message});
-        // hash new user password
-        user.password = bcryptjs.hashSync(user.password)
 
         users.push(user);
          // set status to 201 created
@@ -105,8 +98,17 @@ router.get('/courses/:id', (req,res,next) => {
 });
 
 // POST COURSES - working and valid
-router.post('/courses', (req,res,next) => {
-    const course = new Course(req.body);
+router.post('/courses', authenticateUser, (req,res,next) => {
+
+    const newCourse = new Course({
+        title: req.title,
+        description: req.description,
+        estimatedTime: req.estimatedTime,
+        materialsNeeded: req.materialsNeeded,
+        user: user._id
+    });
+
+    const course = new Course(newCourse);
     course.save(function(err, course){
         if(err) return next(err);
         else {
@@ -117,7 +119,7 @@ router.post('/courses', (req,res,next) => {
 });
 
 // PUT COURSES:id - working and valid 
-router.put('/courses/:id', (req,res,next) => {
+router.put('/courses/:id', authenticateUser, (req,res,next) => {
     req.course.update(req.body, function(err,result){
         if(err) return res.status(400).json({errors: err.message});
         res.sendStatus(204);
@@ -125,7 +127,7 @@ router.put('/courses/:id', (req,res,next) => {
 });
 
 // DELETE COURSES - working
-router.delete('/courses/:id', (req,res,next) => {
+router.delete('/courses/:id', authenticateUser, (req,res,next) => {
     req.course.remove(function(err){
         req.course.save(function(err,course){
             if (err) return next(err);
