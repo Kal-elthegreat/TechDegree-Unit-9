@@ -30,17 +30,25 @@ const authenticateUser = (req, res, next) => {
     const credentials = auth(req);
 
     if(credentials){
-        console.log(1)
-        const user = User.findOne({emailAddress: credentials.name})
-    if(user){
-        console.log(2, 'user: ' + user, 'credentials: ' + credentials.pass)
-        const auth = bcryptjs
-        .compareSync(credentials.pass, user.password);
-    if (auth){
-        console.log(3)
-            req.currentUser = user;
-            }
-        }    
+        console.log(1) // test 1 
+        User.findOne({emailAddress: credentials.name}) // <--- issue lies here, cannot access User db for some reason
+        .exec(function(error, user){
+            console.log(user)
+            if(error) {
+                console.log('error here')
+                next(error);
+            } 
+            if(user){
+                console.log(2, 'user: ' + user, 'credentials: ' + credentials.pass) // user holds- obj obj
+                const auth = bcryptjs
+                .compareSync(credentials.pass, user.password);
+                if (auth){
+                    console.log(3) // test 3
+                    req.currentUser = user;
+                }
+            }    
+        })
+    
     }
     next();
 
@@ -52,7 +60,7 @@ router.get('/users', authenticateUser, (req,res) => {
     const user = req.currentUser;
     //console.log('test val: ' + user)
     res.json({ // -- keep failing here, user is returning undefined 
-    name: `${user.firstName} ${user.lastName}`,
+    users: user,
     //   username: user.emailAddress,
     //   password: user.password
     });
@@ -113,7 +121,7 @@ router.post('/courses', authenticateUser, (req,res) => {
 
 // PUT COURSES:id - working and valid 
 router.put('/courses/:id', authenticateUser, (req,res) => {
-    req.course.update(req.body, function(err,result){
+    req.course.update(req.body, function(err){
         if(err) return res.status(400).json({errors: err.message});
         res.sendStatus(204);
     });
