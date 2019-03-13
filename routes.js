@@ -47,6 +47,7 @@ const authUser = (req,res,next) => {
     }; // end middleware
 
 
+
 router.param("id", function(req, res,next,id){
     Course.findById(id, function(err,doc){
         if(err) return next(err);
@@ -120,6 +121,7 @@ router.post('/courses', authUser, (req,res,next) => {
 
     const newCourse = new Course({
         //user: req.currentUser._id, // <---- should hold user id
+        user: req.body.user,
         title: req.body.title,
         description: req.body.description,
         estimatedTime: req.body.estimatedTime,
@@ -158,45 +160,46 @@ module.exports = router;
 
 
 //VERSION 1
-// const authUser = (req,res,next) => {
-//     let message = null;
-//     const credentials = auth(req);
-//     if(credentials.name && credentials.pass){
-//         console.log('good: ' + credentials);
-//   
-//        const userSelected = User.findOne({emailAddress: credentials.name})
-//        .exec(function(err,user){
-//         // ?? what goes here ??
-//         if(err) return(err)
-//        })
-//         if(userSelected){
-//             console.log('user avail: ' + userSelected.password, credentials)
-//             const auth = bcryptjs
-//             .compareSync(credentials.pass, userSelected.password);
-//             console.log(auth)
-//             if(auth){
-//                 console.log('User authenticated')
-//                 req.currentUser = userSelected;
-//             } else{
-//                 message = 'Authentication fail';
-//   
-//             }
-//         } else {
-//             message = 'User not found';
-//  
-//         }
-//     } else {
-//         message = 'Username/Password';
-//         console.log( 'Username or Password needed', credentials.name + credentials.pass)
-//     }
+const authUser1 = (req,res,next) => {
+    let message = null;
+    const credentials = auth(req);
+    if(credentials.name && credentials.pass){
+        console.log('good: ' + credentials);
+  
+       const userSelected = User.findOne({emailAddress: credentials.name})
+       .exec(function(err,user){
+        // ?? what goes here ??
 
-//     if(message){
-//         console.warn(message);
-//         res.status(401).json({ message: 'Access Denied' });
-//     } else {
-//         next();
-//     } 
-// };
+        if(err) return(err)
+       })
+        if(userSelected){
+            console.log('user avail: ' + userSelected.password, credentials)
+            const auth = bcryptjs
+            .compareSync(credentials.pass, userSelected.password);
+            console.log(auth)
+            if(auth){
+                console.log('User authenticated')
+                req.currentUser = userSelected;
+            } else{
+                message = 'Authentication fail';
+  
+            }
+        } else {
+            message = 'User not found';
+ 
+        }
+    } else {
+        message = 'Username/Password';
+        console.log( 'Username or Password needed', credentials.name + credentials.pass)
+    }
+
+    if(message){
+        console.warn(message);
+        res.status(401).json({ message: 'Access Denied' });
+    } else {
+        next();
+    } 
+};
 
 ///VERSION 2
 //  Authentication Middleware
