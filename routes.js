@@ -7,43 +7,45 @@ const User = require('./models').User;
 const bcryptjs = require('bcryptjs');
 const auth = require('basic-auth');
 
-//const users = [{emailAddress: 'paul@wall.com', password: '$2a$10$aZJon4If7ZskfteR.O3wWe0U.xW4I.k5ePsYSnzaB2b.rvSRYvfrC'}] // ignore this
-
+// Authentication Middleware
 const authUser = (req,res,next) => {
-    let message = null;
-    const credentials = auth(req);
+    const credentials = auth(req); // get user inputs
     if(credentials.name && credentials.pass){
-        console.log('good: ' + credentials);
-        //const user = users.find(u => u.emailAddress === credentials.name);
-       const user = User.findOne({emailAddress: credentials.name})
-       .exec(function(err,users){
-        // ?? what goes here ??
-       })
+        console.log(credentials)
+        User.findOne({emailAddress: credentials.name }, function(err, user){ // check db for email
         if(user){
-            console.log('user avail: ' + user.password, credentials)
-            const auth = bcryptjs
-            .compareSync(credentials.pass, user.password);
-            console.log(auth)
+            const auth = bcryptjs.compareSync(credentials.pass,user.password); // compare hashed password & given password
             if(auth){
-                console.log('User authenticated')
-                req.currentUser = user;
-            } else{
-                message = 'Authentication fail';
-                //onsole('User not authenticated')
+                console.log('USER AUTHORIZED') // if match
+                req.currentUser = user; // pass to next middleware
+                
+            } else {
+                // passwords not a match
+                err = new Error('Password');
+                err.status = 401;
+                res.status(err.status)
+                .json({message:'Access Denied: ' + err.message});
+                //next(err);
             }
-        } else {
-            message = 'User not found';
-            //console.log('no user here' + user)
-        }
-    } else {
-        message = 'Username/Password';
-        console.log( 'Username or Password needed', credentials.name + credentials.pass)
-    }
+        } else { 
+            // IF NO USER
+            err = new Error('User not found');
+                err.status = 401;
+                res.status(err.status)
+                .json({message:'Access Denied: ' + err.message});
+                //next(err);
+            }   
+        })
+    } else { // no creds
+         const err = new Error('Missing user/password');
+         err.status = 401;
+         res.status(err.status)
+         .json({message:'Access Denied: ' + err.message});
+         //next(err);
+     } 
+        next();     
+    }; // end middleware
 
-    if(message){
-        console.warn(message);
-    }
-};
 
 router.param("id", function(req, res,next,id){
     Course.findById(id, function(err,doc){
@@ -62,21 +64,24 @@ router.param("id", function(req, res,next,id){
     
 
 // GET USERS - working
-router.get('/users', (req,res, next) => {
-    /// this block will be replaced once authUser works
+router.get('/users',authUser, (req,res, next) => {
+    /// this block replaced authUser block
     User.find({})
-    .exec(function(err,users){
+    .exec(function(err){
         if(err) return next(err);
-        res.json(users)})
-    /////
-
-    //const user = req.currentUser;
-    //res.json({ // -- keep failing here, user is returning undefined 
-    //     users: user,
-    //     username: user.emailAddress,
-    //    password: user.password
-    //});
+        res.json(req.currentUser)
+    });
 });
+
+// router.get('/users', authUser, function (req,res,next) {
+//     const userSelected = req.currentUser; // holds no data here; see lines 18 & 24
+//     console.log('userSelected: '+ userSelected)
+//     res.json({ // -- keep failing here because userSelected is returning undefined 
+//         user: userSelected._id,
+//         username: userSelected.emailAddress,
+//        password: userSelected.password
+//     });
+// });
 
 // POST USERS - working validation complete
 router.post('/users',(req,res,next) => {
@@ -111,14 +116,14 @@ router.get('/courses/:id', (req,res,next) => {
 });
 
 // POST COURSES - working and valid
-router.post('/courses',  (req,res,next) => {
+router.post('/courses', authUser, (req,res,next) => {
 
     const newCourse = new Course({
+        //user: req.currentUser._id, // <---- should hold user id
         title: req.body.title,
         description: req.body.description,
         estimatedTime: req.body.estimatedTime,
-        materialsNeeded: req.body.materialsNeeded
-        //user: user._id
+        materialsNeeded: req.body.materialsNeeded,
     });
 
     const course = new Course(newCourse);
@@ -126,13 +131,12 @@ router.post('/courses',  (req,res,next) => {
         if(err) return next(err);
         else {
             res.sendStatus(201)
-        }
-        ;
+        };  
     });
 });
 
 // PUT COURSES:id - working and valid 
-router.put('/courses/:id', (req,res) => {
+router.put('/courses/:id', authUser, (req,res) => {
     req.course.update(req.body, function(err){
         if(err) return res.status(400).json({errors: err.message});
         res.sendStatus(204);
@@ -140,7 +144,7 @@ router.put('/courses/:id', (req,res) => {
 });
 
 // DELETE COURSES - working
-router.delete('/courses/:id',(req,res) => {
+router.delete('/courses/:id', authUser, (req,res) => {
     req.course.remove(function(err){
         req.course.save(function(err,course){
             if (err) return next(err);
@@ -150,3 +154,116 @@ router.delete('/courses/:id',(req,res) => {
 });
 
 module.exports = router;
+
+
+
+//VERSION 1
+// const authUser = (req,res,next) => {
+//     let message = null;
+//     const credentials = auth(req);
+//     if(credentials.name && credentials.pass){
+//         console.log('good: ' + credentials);
+//   
+//        const userSelected = User.findOne({emailAddress: credentials.name})
+//        .exec(function(err,user){
+//         // ?? what goes here ??
+//         if(err) return(err)
+//        })
+//         if(userSelected){
+//             console.log('user avail: ' + userSelected.password, credentials)
+//             const auth = bcryptjs
+//             .compareSync(credentials.pass, userSelected.password);
+//             console.log(auth)
+//             if(auth){
+//                 console.log('User authenticated')
+//                 req.currentUser = userSelected;
+//             } else{
+//                 message = 'Authentication fail';
+//   
+//             }
+//         } else {
+//             message = 'User not found';
+//  
+//         }
+//     } else {
+//         message = 'Username/Password';
+//         console.log( 'Username or Password needed', credentials.name + credentials.pass)
+//     }
+
+//     if(message){
+//         console.warn(message);
+//         res.status(401).json({ message: 'Access Denied' });
+//     } else {
+//         next();
+//     } 
+// };
+
+///VERSION 2
+//  Authentication Middleware
+// const authUser = (req,res,next) => {
+//     let message = null;
+//     const credentials = auth(req);
+//     if(credentials.name && credentials.pass){
+//         console.log('good: ' + credentials);
+//         //const user = users.find(u => u.emailAddress === credentials.name);
+//        User.findOne({emailAddress: credentials.name})
+//        .exec(function(err,user){ // user exists here <----
+
+//         if(user){
+//             console.log('user avail: ' + user.password, credentials)
+//             const auth = bcryptjs
+//             .compareSync(credentials.pass, user.password);
+//             console.log(auth)
+                
+//             if(auth){
+//                 req.currentUser = user; // user still exists here
+//                 console.log('USER AUTHENTICATED: ' + req.currentUser)
+//                 } else{
+//                 console.log('Authentication fail')
+//                 message = 'Authentication fail';
+//                 }
+//             } else {
+//                 console.log('User not found')
+//                 message = 'User not found';
+//             }
+//         if(err) return(err)
+//      }) // end findOne()
+//     } else {
+//         console.log('Username/Password')
+//         message = 'Username/Password'; 
+//     }
+//     if(message){
+//         console.warn(message)
+//         res.status(401).json({ message: 'Access Denied' });
+    
+//     }
+//     next();
+// };
+
+
+// VERSION 3
+// const authUser = (req,res,next) => {
+//     const credentials = auth(req); // get user inputs
+//     User.findOne({emailAddress: credentials.name }, function(err, user){ // check db for email
+//         if(user){
+//             const auth = bcryptjs.compareSync(credentials.pass,user.password); // compare hashed password & given password
+//             if(auth){
+//                 console.log('User Authorized') // if match
+//                 req.currentUser = user; // pass to next middleware
+//             } else {
+//                 err = new Error;
+//                 res.status = 401;
+//                 res.json({message:'Acces Denied'})
+//                 next(err);
+//                 // passwords not a match
+
+//             }
+//         } else { 
+//             // IF NO USER
+//             err = new Error;
+//                 res.status = 401;
+//                 res.json({message:'Acces Denied'})
+//                 next(err);
+//             }   
+//         })       
+//     }; // end middleware
