@@ -95,6 +95,7 @@ router.post('/users',(req,res,next) => {
     
     user.save(function(err){
         if(err) return res.status(400).json({error: err.message});
+        res.location('/');
          // set status to 201 created
         res.sendStatus(201);
         
@@ -132,6 +133,7 @@ router.post('/courses', authUser, (req,res,next) => {
     course.save(function(err){
         if(err) return next(err);
         else {
+            res.location('/' + course.id)
             res.sendStatus(201)
         };  
     });
