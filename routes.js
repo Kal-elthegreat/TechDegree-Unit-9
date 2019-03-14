@@ -74,16 +74,6 @@ router.get('/users',authUser, (req,res, next) => {
     });
 });
 
-// router.get('/users', authUser, function (req,res,next) {
-//     const userSelected = req.currentUser; // holds no data here; see lines 18 & 24
-//     console.log('userSelected: '+ userSelected)
-//     res.json({ // -- keep failing here because userSelected is returning undefined 
-//         user: userSelected._id,
-//         username: userSelected.emailAddress,
-//        password: userSelected.password
-//     });
-// });
-
 // POST USERS - working validation complete
 router.post('/users',(req,res,next) => {
     const user = new User(req.body);
@@ -161,47 +151,47 @@ module.exports = router;
 
 
 
-//VERSION 1
-const authUser1 = (req,res,next) => {
-    let message = null;
-    const credentials = auth(req);
-    if(credentials.name && credentials.pass){
-        console.log('good: ' + credentials);
+// //VERSION 1
+// const authUser1 = (req,res,next) => {
+//     let message = null;
+//     const credentials = auth(req);
+//     if(credentials.name && credentials.pass){
+//         console.log('good: ' + credentials);
   
-       const userSelected = User.findOne({emailAddress: credentials.name})
-       .exec(function(err,user){
-        // ?? what goes here ??
+//        const userSelected = User.findOne({emailAddress: credentials.name})
+//        .exec(function(err,user){
+//         // ?? what goes here ??
 
-        if(err) return(err)
-       })
-        if(userSelected){
-            console.log('user avail: ' + userSelected.password, credentials)
-            const auth = bcryptjs
-            .compareSync(credentials.pass, userSelected.password);
-            console.log(auth)
-            if(auth){
-                console.log('User authenticated')
-                req.currentUser = userSelected;
-            } else{
-                message = 'Authentication fail';
+//         if(err) return(err)
+//        })
+//         if(userSelected){
+//             console.log('user avail: ' + userSelected.password, credentials)
+//             const auth = bcryptjs
+//             .compareSync(credentials.pass, userSelected.password);
+//             console.log(auth)
+//             if(auth){
+//                 console.log('User authenticated')
+//                 req.currentUser = userSelected;
+//             } else{
+//                 message = 'Authentication fail';
   
-            }
-        } else {
-            message = 'User not found';
+//             }
+//         } else {
+//             message = 'User not found';
  
-        }
-    } else {
-        message = 'Username/Password';
-        console.log( 'Username or Password needed', credentials.name + credentials.pass)
-    }
+//         }
+//     } else {
+//         message = 'Username/Password';
+//         console.log( 'Username or Password needed', credentials.name + credentials.pass)
+//     }
 
-    if(message){
-        console.warn(message);
-        res.status(401).json({ message: 'Access Denied' });
-    } else {
-        next();
-    } 
-};
+//     if(message){
+//         console.warn(message);
+//         res.status(401).json({ message: 'Access Denied' });
+//     } else {
+//         next();
+//     } 
+// };
 
 ///VERSION 2
 //  Authentication Middleware
