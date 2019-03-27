@@ -121,7 +121,7 @@ router.post('/courses', authUser, (req,res,next) => {
 
     const course = new Course(newCourse);
     course.save(function(err){
-        if(err) return next(err);
+        if(err) return res.status(400).json({errors: err.message});
         else {
             res.location('/' + course.id)
             res.sendStatus(201)
